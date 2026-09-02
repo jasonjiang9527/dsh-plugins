@@ -1,8 +1,8 @@
 {
-  "name": "dsh-drill",
+  "name": "dsh-btw",
   "version": "0.1.0",
   "private": true,
-  "description": "会话选中钻取：划选历史对话内容 → 引用到当前输入框，或 fork 新会话针对性提问（离开时自动归档，不污染侧边栏）",
+  "description": "会话 btw：划选历史对话内容 → 引用到当前输入框，或 fork 一次性临时会话针对性提问（离开时自动归档，不污染侧边栏）",
   "license": "MIT",
   "keywords": [
     "dsh",
