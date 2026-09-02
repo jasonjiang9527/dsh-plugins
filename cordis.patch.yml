@@ -1,0 +1,4 @@
+# dsh-drill — host half：把插件插进组合树。全部能力在浏览器半边（lib/client.js）。
+- insert:
+    - id: dsh-drill
+      name: dsh-drill
