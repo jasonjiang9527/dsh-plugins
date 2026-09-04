@@ -19,6 +19,7 @@
 | **引用提问** | 选区以「引用块 + 来源头」（含源会话标题与时间）预填进**当前会话**输入框草稿（不发送），继续编辑后发送 |
 | **btw** | 从**选中消息所在节点** `fork` 出一个一次性临时会话并自动切换；会话改名「🔍 btw · <源标题>」，输入框预填 btw 引用块 |
 | **自动归档** | 离开 btw 会话时自动从侧边栏归档隐藏（running 时顺延到空闲，可在设置关闭） |
+| **Provider 高级配置** | Models 设置页每个 provider 卡片下新增「高级配置」折叠面板，把 settings.yaml 里的隐藏字段全部可视化（见下节） |
 
 细节：
 
@@ -78,6 +79,30 @@ flowchart TD
 | `dsh-btw:truncateChars` | `"2000"` | 引用文本截断长度（≥100 生效） |
 | `dsh-btw:activeBtws` | `[]` | 活跃 btw 会话表（内部持久化，勿手改） |
 
+## Provider 高级配置面板
+
+**设置 → Models** 页，每个 provider 卡片下方有「高级配置（dsh-btw）」折叠面板。dsh 官方 Models 页只暴露 API key / 显示名 / Base URL / 模型列表等基础字段，其余高级参数只能手改 `settings.yaml`——本面板把它们全部可视化，读写走官方 RPC（`settings.describe` / `settings.mutate` 乐观锁），保存时服务端 schema + serviceable 校验兜底。
+
+可视化字段（`llm-pi-ai` 命名空间，`providers.<route>` 下）：
+
+| 分组 | 字段 | 说明 |
+|------|------|------|
+| 端点与协议 | `displayName` / `baseURL` / `api` | `api ∈ openai-completions \| openai-responses \| anthropic-messages` |
+| 超时 | `timeoutMs` / `streamIdleTimeoutMs` / `websocketConnectTimeoutMs` | 毫秒 |
+| 传输与缓存 | `transport` / `cacheRetention` / `reasoning` | `transport ∈ auto\|sse\|websocket\|websocket-cached`；`cacheRetention ∈ none\|short\|long`；`reasoning ∈ off…max` |
+| thinkingBudgets | `minimal` / `low` / `medium` / `high` | 推理 provider 的 token 预算 |
+| 容量兜底 | `defaultContextWindow` / `defaultMaxTokens` | 未声明模型的兜底值（默认 262144 / 32768） |
+| headers | 自定义请求头 | 每行 `Name: Value`；凭据请走 apiKeyEnv，勿写入此处 |
+| 兼容开关 | `modelOverrides.<model>.compat` | 勾选式：supportsTemperature / forceAdaptiveThinking / allowEmptySignature / supportsStrictTools / requiresThinkingAsText / supportsCacheControlOnTools |
+| retryPolicy | `mode` / `maxRetries` / `retryableCodes` / `backoff.*` | `normal`（可配重试次数与错误码）或 `always` |
+
+行为细节：
+
+- 字段留空 = **继承目录/协议默认**（保存时 `unset`，不写死值）；
+- 只对**改过的字段**生成写入（打开面板时快照做 diff，不把 base 层值钉进 user 层）；
+- 配置冲突（别处同时改动）会明确提示，收起重新展开即可；
+- 凭据仍走官方 API key 表单（credentials seam），本面板不碰密钥。
+
 ## 工作原理
 
 纯客户端插件，只走 dsh 公开扩展面，**零核心改动**：
@@ -86,6 +111,7 @@ flowchart TD
 - **会话桥**：注册到 `conversation.session.header.utilities` 座位（session 作用域，零渲染高度），借 standard kit 拿到 `inputActions.setDraft` 与输入草稿快照，提升给 root 作用域的浮层使用；
 - **fork 锚点**：`binding.session.getSnapshot().chat.nodes.get(key).anchorSeq` 定位选中节点；fork 后 `child.rename()` 钉住临时会话标题（不被 LLM 自动再生）；
 - **归档 watcher**：root 级订阅 `sessions.list`，当前选择离开"活跃 btw 会话"且该会话不在 running 时调用 `workspaces.archiveSession`；
+- **配置面板**：注册到官方预留的 `settings.models.provider-card` 座位（ui-settings-models 声明），读 `settings.describe("llm-pi-ai")`、写 `settings.mutate(...)`（乐观锁 revision），diff 后最小化写入；
 - hooks 纪律：任何 hook 都不条件调用（`useInput` 由内层子组件无条件调用）。
 
 ## 已知限制

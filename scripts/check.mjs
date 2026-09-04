@@ -33,6 +33,10 @@ const checks = [
 	["archiveSession(", "auto-archive"],
 	["sessions.fork(", "btw fork"],
 	["useInput((s) => s)", "kit hook consumption"],
+	['"settings.models.provider-card"', "provider config panel seat"],
+	["settings.mutate(", "settings write RPC"],
+	["settings.describe(", "settings read RPC"],
+	["llm-pi-ai", "provider namespace"],
 ];
 for (const [needle, label] of checks) {
 	if (clientSrc.includes(needle)) console.log(`OK   ${label}`);
