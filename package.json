@@ -1,8 +1,8 @@
 {
   "name": "dsh-btw",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "private": true,
-  "description": "会话 btw：划选历史对话内容 → 引用到当前输入框，或 fork 一次性临时会话针对性提问（离开时自动归档，不污染侧边栏）",
+  "description": "会话 btw：划选历史对话内容 → 引用到当前输入框，或 fork 一次性临时会话针对性提问（离开时自动归档，不污染侧边栏）；另提供「新上下文」逻辑分割（按钮 / /newcontext，历史保留但不进模型上下文）与 Provider 高级配置面板",
   "license": "MIT",
   "keywords": [
     "dsh",
@@ -14,6 +14,10 @@
     "web"
   ],
   "type": "module",
+  "scripts": {
+    "check": "node scripts/check.mjs && node scripts/check-form.mjs",
+    "check:newcontext": "node scripts/check-newcontext.mjs"
+  },
   "main": "lib/index.js",
   "exports": {
     ".": {

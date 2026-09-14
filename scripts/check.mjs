@@ -34,9 +34,15 @@ const checks = [
 	["sessions.fork(", "btw fork"],
 	["useInput((s) => s)", "kit hook consumption"],
 	['"settings.models.provider-card"', "provider config panel seat"],
+	["key: SETTINGS_NS", "provider-card keyed registration (dsh >= 0.1.5)"],
 	["settings.mutate(", "settings write RPC"],
-	["settings.describe(", "settings read RPC"],
+	["settings.describe()", "settings read RPC (no-arg form)"],
 	["llm-pi-ai", "provider namespace"],
+	['"remote.settings"', "remote.<namespace> child service injected"],
+	["useChat((s) => s.nodes)", "chat node face via session standard kit"],
+	["anchorOf", "fork anchor resolver lifted to root scope"],
+	['"conversation.input.left"', "new-context button seat"],
+	['face.command("/newcontext")', "new-context trigger via ISession.command"],
 ];
 for (const [needle, label] of checks) {
 	if (clientSrc.includes(needle)) console.log(`OK   ${label}`);
@@ -46,16 +52,54 @@ for (const [needle, label] of checks) {
 	}
 }
 
+// 2b) inject must name SERVICES, never packages: a package name there leaves the
+// plugin waiting for a service that will never appear, so apply() never runs.
+if (/const inject = \[[^\]]*"@/.test(clientSrc)) {
+	failed = true;
+	console.error("FAIL inject[] contains a package name; Cordis inject takes service keys");
+} else console.log("OK   inject[] holds service keys only");
+
+// 2c) i18n coverage: every translate("key") must exist in BOTH dictionaries —
+// a missing key silently falls back to Chinese and is invisible in review.
+{
+	const dictStart = clientSrc.indexOf("const DICT = {");
+	const enAt = dictStart < 0 ? -1 : clientSrc.indexOf("\n\t\t\ten: {", dictStart);
+	const dictEnd = dictStart < 0 ? -1 : clientSrc.indexOf("\n\t\t};", dictStart);
+	if (dictStart < 0 || enAt < 0 || dictEnd < 0) {
+		failed = true;
+		console.error("FAIL cannot locate the DICT zh/en blocks");
+	} else {
+		const keysOf = (text) => new Set([...text.matchAll(/^\t*"([^"]+)":/gm)].map((m) => m[1]));
+		const zhKeys = keysOf(clientSrc.slice(dictStart, enAt));
+		const enKeys = keysOf(clientSrc.slice(enAt, dictEnd));
+		const used = new Set([...clientSrc.matchAll(/translate\(\s*"([^"]+)"/g)].map((m) => m[1]));
+		const missing = [];
+		for (const key of used) {
+			if (!zhKeys.has(key)) missing.push(`zh:${key}`);
+			if (!enKeys.has(key)) missing.push(`en:${key}`);
+		}
+		if (missing.length > 0) {
+			failed = true;
+			console.error(`FAIL i18n keys missing: ${missing.join(", ")}`);
+		} else {
+			console.log(`OK   i18n keys covered (${used.size} used, zh ${zhKeys.size} / en ${enKeys.size} declared)`);
+		}
+	}
+}
+
 // 3) index.js — ESM import + named exports
 try {
 	const mod = await import(pathToFileURL(path.join(root, "lib/index.js")).href);
 	if (mod.name !== "dsh-btw") throw new Error(`unexpected name: ${mod.name}`);
 	if (typeof mod.apply !== "function") throw new Error("apply is not a function");
-	console.log("OK   lib/index.js imports as ESM; name/apply present");
+	if (mod.COMMAND_NAME !== "newcontext") throw new Error(`unexpected COMMAND_NAME: ${mod.COMMAND_NAME}`);
+	console.log("OK   lib/index.js imports as ESM; name/apply/COMMAND_NAME present");
 } catch (error) {
 	failed = true;
 	console.error("FAIL lib/index.js:", error.message);
 }
+// 宿主半边的 surface 替换契约由 scripts/check-newcontext.mjs 用真实
+// dsh-session 的 foldSurface 验证（另跑一条命令）。
 
 // 4) package.json / patch sanity
 const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
