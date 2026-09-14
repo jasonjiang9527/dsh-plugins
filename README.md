@@ -33,12 +33,15 @@
 
 要求：dsh 0.1.5-rc.2（web 端）。此前的 0.1.1-rc.2 适配已失效，改动清单见 `CHANGELOG.md` 的 0.1.1 条目。
 
+仓库 [`jasonjiang9527/dsh-plugins`](https://github.com/jasonjiang9527/dsh-plugins) 是自研 dsh 插件的合集；
+**dsh-btw 目前就放在仓库根目录**（等有了第二个插件再改成 `dsh-btw/` 子目录 + `#path:/dsh-btw` 的装法）。
+
 ```sh
 # 从本地路径安装（web profile）
 dsh plugin --profile web add <本插件目录>
 
 # 或从 GitHub 安装
-dsh plugin --profile web add git+https://github.com/<you>/dsh-btw.git
+dsh plugin --profile web add git+https://github.com/jasonjiang9527/dsh-plugins.git
 
 # 确认组合树里出现 dsh-btw
 dsh --profile web --dump-config
@@ -175,9 +178,13 @@ flowchart TD
 自检会覆盖其中可静态断言的部分：
 
 ```sh
-node scripts/check.mjs           # 语法 + 结构 + 清单断言
+npm run check                     # 语法 + 结构 + i18n key 覆盖 + formToOps diff 语义单测
 node scripts/check-newcontext.mjs # 用部署里真实的 dsh-session 验证切分契约
 ```
+
+`check-newcontext.mjs` 需要机器上装过 dsh：它按 `$DSH_SESSION_PKG` →
+node 可执行文件旁的全局安装 → `%APPDATA%\npm` → `$DSH_HOME/profiles/*` 的顺序找
+`@deepseek-ai/dsh-session`，找不到就明确报错（其余两个脚本无外部依赖）。
 
 ## 已知限制
 
@@ -208,7 +215,8 @@ dsh-btw/
 │   ├── client.js    # 浏览器半边：手写 CJS factory（ModuleLoader），交互功能所在
 │   └── index.js     # 服务端半边：/newcontext 命令 —— 把一段历史移出模型上下文
 ├── cordis.patch.yml # 组合树 patch（insert 插件节点）
-├── scripts/check.mjs           # 静态自检（语法 + 结构断言）
+├── scripts/check.mjs           # 静态自检（语法 + 结构 + i18n key 覆盖）
+├── scripts/check-form.mjs      # formToOps diff 语义单测（从 client.js 抽纯函数跑）
 ├── scripts/check-newcontext.mjs # 切分契约测试（对付真实 dsh-session 的 foldSurface）
 └── package.json     # dsh.client.platform = "web"、exports["./client"]
 ```
@@ -216,8 +224,8 @@ dsh-btw/
 自检：
 
 ```sh
-node scripts/check.mjs
-node scripts/check-newcontext.mjs
+npm run check                     # = check.mjs + check-form.mjs
+npm run check:newcontext          # 需要机器上装过 dsh
 ```
 
 无需构建器：`lib/client.js` 是手写的 CommonJS factory（`window.__ModuleLoader__.load({ id, factory })`），运行时依赖由 dsh 注入（react 为 shell 预置种子模块）。修改源码后重启 dsh web 即可看到效果。
